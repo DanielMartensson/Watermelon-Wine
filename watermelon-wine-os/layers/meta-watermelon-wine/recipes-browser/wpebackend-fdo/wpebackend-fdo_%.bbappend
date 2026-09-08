@@ -19,3 +19,7 @@ do_install:append() {
 FILES_SOLIBSDEV:remove = "${libdir}/libWPEBackend-fdo-1.0.so"
 FILES:${PN}-dev:remove = "${libdir}/lib*${SOLIBSDEV}"
 FILES:${PN} += "${libdir}/libWPEBackend-fdo-1.0.so"
+
+# The unversioned .so symlink is deliberately shipped for dlopen(); the default
+# "dev-so" QA check would otherwise fail the runtime package.
+INSANE_SKIP:${PN} += "dev-so"
