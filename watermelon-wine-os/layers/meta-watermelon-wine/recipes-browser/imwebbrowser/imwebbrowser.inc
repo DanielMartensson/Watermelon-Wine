@@ -54,9 +54,10 @@ RDEPENDS:${PN} += " \
 	gstreamer1.0-plugins-good \
 	gstreamer1.0-plugins-bad \
 	libnice \
+	libdecor \
 "
 
-SRCREV = "3d6432b002bbbb2c4937effa84685364c37e08ff"
+SRCREV = "2b53e9221b6a86f2342c1eace1eec4d6cf89a318"
 BRANCH = "main"
 SRC_URI = "git://github.com/DanielMartensson/ImWebBrowser.git;protocol=https;branch=${BRANCH}"
 
