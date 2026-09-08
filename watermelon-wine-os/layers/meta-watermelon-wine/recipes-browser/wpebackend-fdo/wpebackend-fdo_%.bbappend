@@ -12,4 +12,7 @@ do_install:append() {
 
 # Hindra att symbolen sveps med till -dev-paketet (default-FILES lägger
 # lib*.so i FILES_SOLIBSDEV); den måste ligga i runtime-paketet.
+# Borttagen från FILES_SOLIBSDEV först — utan det vinner -dev trots
+# tillägget i FILES:${PN}, och länken landar aldrig i rootfs.
+FILES_SOLIBSDEV:remove = "${libdir}/libWPEBackend-fdo-1.0.so"
 FILES:${PN} += "${libdir}/libWPEBackend-fdo-1.0.so"
