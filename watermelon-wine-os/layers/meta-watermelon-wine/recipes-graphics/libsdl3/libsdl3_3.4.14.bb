@@ -59,6 +59,16 @@ PACKAGECONFIG[console-build] = "-DSDL_UNIX_CONSOLE_BUILD=ON"
 PACKAGECONFIG[gles2]      = "-DSDL_OPENGLES=ON,-DSDL_OPENGLES=OFF,virtual/libgles2"
 PACKAGECONFIG[jack]       = "-DSDL_JACK=ON,-DSDL_JACK=OFF,jack"
 PACKAGECONFIG[kmsdrm]     = "-DSDL_KMSDRM=ON,-DSDL_KMSDRM=OFF,libdrm virtual/libgbm"
+# KMSDRM is not pulled in by DISTRO_FEATURES (only alsa/pulse/pipewire/x11/vulkan
+# are filtered and wayland is conditional). Always build the KMSDRM video driver:
+# it is what lets ImWebBrowser run --gfn --kmsdrm directly on DRM/KMS, without
+# any Wayland compositor.
+PACKAGECONFIG:append = " kmsdrm"
+# libdecor gives the SDL Wayland window its title bar / window frame under
+# Weston (server-side decorations via the xdg-decoration protocol, or
+# client-side drawing when the compositor lacks it); on the plain X11 and
+# KMS paths it is simply unused.
+PACKAGECONFIG:append = " libdecor"
 # The hidraw support doesn't catch Xbox, PS4 and Nintendo controllers,
 #  so we'll just use libusb when it's available.
 PACKAGECONFIG[libusb] = "-DSDL_HIDAPI_LIBUSB=ON,-DSDL_HIDAPI_LIBUSB=OFF,libusb1"
