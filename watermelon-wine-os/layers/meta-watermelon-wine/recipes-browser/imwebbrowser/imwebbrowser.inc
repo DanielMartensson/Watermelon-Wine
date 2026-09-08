@@ -57,7 +57,7 @@ RDEPENDS:${PN} += " \
 	libdecor \
 "
 
-SRCREV = "2b53e9221b6a86f2342c1eace1eec4d6cf89a318"
+SRCREV = "e299edabcd0b89a886a90b6ec8172630e72ad87b"
 BRANCH = "main"
 SRC_URI = "git://github.com/DanielMartensson/ImWebBrowser.git;protocol=https;branch=${BRANCH}"
 
