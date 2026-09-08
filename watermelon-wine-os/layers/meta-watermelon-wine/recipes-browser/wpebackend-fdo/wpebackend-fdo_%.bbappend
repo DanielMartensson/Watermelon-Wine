@@ -10,9 +10,12 @@ do_install:append() {
     ln -sf libWPEBackend-fdo-1.0.so.1 ${D}${libdir}/libWPEBackend-fdo-1.0.so
 }
 
-# Hindra att symbolen sveps med till -dev-paketet (default-FILES lägger
-# lib*.so i FILES_SOLIBSDEV); den måste ligga i runtime-paketet.
-# Borttagen från FILES_SOLIBSDEV först — utan det vinner -dev trots
-# tillägget i FILES:${PN}, och länken landar aldrig i rootfs.
+# Hindra att symbolen sveps med till -dev-paketet. default-FILES pekar på
+# symlänken via TVÅ mönster: FILES_SOLIBSDEV och ${libdir}/lib*${SOLIBSDEV}.
+# Att bara tömma FILES_SOLIBSDEV räcker inte — glob-mönstret i -dev vinner
+# fortfarande (PACKAGES-ordningen ger -dev förtur) och länken hamnar aldrig i
+# rootfs. Så vi tar bort båda mönstren för just den här filen och lägger den
+# uttryckligen i ${PN}.
 FILES_SOLIBSDEV:remove = "${libdir}/libWPEBackend-fdo-1.0.so"
+FILES:${PN}-dev:remove = "${libdir}/lib*${SOLIBSDEV}"
 FILES:${PN} += "${libdir}/libWPEBackend-fdo-1.0.so"
