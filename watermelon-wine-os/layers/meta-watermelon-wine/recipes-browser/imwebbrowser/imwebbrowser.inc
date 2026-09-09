@@ -45,6 +45,11 @@ EXTRA_OECMAKE:append = " -DENABLE_DEVELOPER_EXTRAS=OFF -DENABLE_PAGE_CACHE=OFF \
     -DENABLE_SMOOTH_SCROLLING=OFF -DENABLE_DNS_PREFETCH=OFF \
     -DENABLE_TEXT_AREAS_RESIZE=OFF"
 
+# Serial Skia tile painting: paint one tile at a time instead of bursting the
+# whole tile grid on both A35 cores at once. Reversible per run with
+# IMWB_SERIAL_PAINT=0 (no rebuild needed).
+EXTRA_OECMAKE:append = " -DIMWB_SERIAL_PAINT=ON"
+
 # WebRTC (GFN etc.): WebKit maps RTCPeerConnection onto GStreamer's webrtcbin.
 # The runtime image needs the RTP/webrtc plugins + ICE (libnice) in the rootfs;
 # decoding itself then rides on the SoC's GStreamer codecs (STM32 VPU for 1080p).
@@ -57,7 +62,7 @@ RDEPENDS:${PN} += " \
 	libdecor \
 "
 
-SRCREV = "e299edabcd0b89a886a90b6ec8172630e72ad87b"
+SRCREV = "ffaa690f8bc7b4833d67c436261862846e1cc61e"
 BRANCH = "main"
 SRC_URI = "git://github.com/DanielMartensson/ImWebBrowser.git;protocol=https;branch=${BRANCH}"
 
