@@ -1,0 +1,12 @@
+[submodule "watermelon-wine-os/layers/meta-opennow"]
+	path = watermelon-wine-os/layers/meta-opennow
+	url = https://github.com/DanielMartensson/meta-OpenNOW.git
+[submodule "watermelon-wine-os/layers/meta-qt6"]
+	path = watermelon-wine-os/layers/meta-qt6
+	url = https://code.qt.io/yocto/meta-qt6.git
+[submodule "watermelon-wine-os/layers/meta-rust-bin"]
+	path = watermelon-wine-os/layers/meta-rust-bin
+	url = https://github.com/rust-embedded/meta-rust-bin.git
+[submodule "watermelon-wine-os/layers/meta-clang"]
+	path = watermelon-wine-os/layers/meta-clang
+	url = https://github.com/kraj/meta-clang.git
