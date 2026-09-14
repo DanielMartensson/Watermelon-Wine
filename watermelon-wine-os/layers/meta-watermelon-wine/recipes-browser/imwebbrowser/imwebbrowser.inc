@@ -46,9 +46,9 @@ EXTRA_OECMAKE:append = " -DENABLE_DEVELOPER_EXTRAS=OFF -DENABLE_PAGE_CACHE=OFF \
     -DENABLE_TEXT_AREAS_RESIZE=OFF"
 
 # Serial Skia tile painting: paint one tile at a time instead of bursting the
-# whole tile grid on both A35 cores at once. Reversible per run with
-# IMWB_SERIAL_PAINT=0 (no rebuild needed).
-EXTRA_OECMAKE:append = " -DIMWB_SERIAL_PAINT=ON"
+# whole tile grid on both A35 cores at once. OFF = default parallel painting.
+# Reversible per run with IMWB_SERIAL_PAINT=1 (no rebuild needed).
+EXTRA_OECMAKE:append = " -DIMWB_SERIAL_PAINT=OFF"
 
 # WebRTC (GFN etc.): WebKit maps RTCPeerConnection onto GStreamer's webrtcbin.
 # The runtime image needs the RTP/webrtc plugins + ICE (libnice) in the rootfs;
