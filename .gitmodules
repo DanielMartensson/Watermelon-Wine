@@ -10,3 +10,9 @@
 [submodule "watermelon-wine-os/layers/meta-clang"]
 	path = watermelon-wine-os/layers/meta-clang
 	url = https://github.com/kraj/meta-clang.git
+[submodule "watermelon-wine-os/layers/meta-imtube"]
+	path = watermelon-wine-os/layers/meta-imtube
+	url = https://github.com/DanielMartensson/meta-imtube.git
+[submodule "watermelon-wine-os/layers/meta-wpeqt"]
+	path = watermelon-wine-os/layers/meta-wpeqt
+	url = https://github.com/DanielMartensson/meta-wpeqt.git
