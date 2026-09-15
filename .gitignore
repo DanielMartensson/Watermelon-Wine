@@ -5,3 +5,4 @@ watermelon-wine-os/layers/cache/
 watermelon-wine-os/.repo/
 watermelon-wine-os/build-*/
 watermelon-wine-os/cache/
+watermelon-wine-os/*.log
