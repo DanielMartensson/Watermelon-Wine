@@ -81,10 +81,10 @@ Two board variants are supported:
 | `meta-st/meta-st-stm32mp-addons` | `repo` | CubeMX machine template, `mx/` machinery |
 | `meta-st/scripts` | `repo` | `envsetup.sh` |
 | **`meta-watermelon-wine`** | **this repo** | Board machines, device trees, CubeMX projects |
-| **`meta-embedded-apps`** | **this repo** (submodule) | `opennow`, `nanobrowser`, `ytgst` recipes |
-| `meta-clang` | submodule | LLVM/Clang toolchain |
-| `meta-qt6` | submodule | Qt 6 (scarthgap LTS) |
-| `meta-rust-bin` | submodule | Prebuilt Rust host tools |
+| `meta-embedded-apps` | `submodule` | `opennow`, `nanobrowser`, `ytgst` recipes |
+| `meta-clang` | `submodule` | LLVM/Clang toolchain |
+| `meta-qt6` | `submodule` | Qt 6 (scarthgap LTS) |
+| `meta-rust-bin` | `submodule | Prebuilt Rust host tools |
 
 `meta-watermelon-wine` is a plain directory in this repository, not a
 submodule. The other four are git submodules declared in `.gitmodules` —
