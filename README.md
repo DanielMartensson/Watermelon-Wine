@@ -84,7 +84,7 @@ Two board variants are supported:
 | `meta-embedded-apps` | `submodule` | `opennow`, `nanobrowser`, `ytgst` recipes |
 | `meta-clang` | `submodule` | LLVM/Clang toolchain |
 | `meta-qt6` | `submodule` | Qt 6 (scarthgap LTS) |
-| `meta-rust-bin` | `submodule | Prebuilt Rust host tools |
+| `meta-rust-bin` | `submodule` | Prebuilt Rust host tools |
 
 `meta-watermelon-wine` is a plain directory in this repository, not a
 submodule. The other four are git submodules declared in `.gitmodules` —
