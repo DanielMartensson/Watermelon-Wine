@@ -6,9 +6,8 @@ I/O, is an M2M node, accepts V4L2_PIX_FMT_H264 on its output queue, offers NV12 
 or I420 on its capture queue, and hands out V4L2_MEMORY_MMAP buffers. If no \
 node matches, playback fails with no /dev/video* node advertises stateful \
 H.264 M2M decode with NV12/I420 output, and the reason is not obvious from \
-v4l2-ctl output alone.
-
-This tool reports, per node, which of those checks pass and lists the fourccs \
+v4l2-ctl output alone. This tool reports, per node, which of those checks pass \
+and lists the fourccs \
 both queues actually offer, so a failure can be attributed to one specific \
 check rather than guessed at. It allocates one MMAP buffer per queue and \
 releases it again, and starts no decoding. It is a diagnostic, not part of the \
@@ -17,6 +16,11 @@ LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://v4l2-m2m-probe.c;md5=06fda3eddb37aeb0c44ad69993d2d830"
 
 SRC_URI = "file://v4l2-m2m-probe.c"
+
+# The .c sits next to the .bb, not in a files/ subdirectory, and bitbake's
+# default FILESPATH only covers the versioned recipe directories. Without this
+# the file:// URIs resolve to nothing and the recipe fails to parse.
+FILESEXTRAPATHS:prepend := "${THISDIR}:"
 
 S = "${WORKDIR}"
 
