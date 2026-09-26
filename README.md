@@ -1,129 +1,379 @@
 # Watermelon-Wine-1A
 
-Open-source embedded computer project based on the **STM32MP25x** SoC, running
-**OpenSTLinux** (Yocto `scarthgap`) with Qt 6 applications (OpenNOW,
-NanoBrowser, YtGst).
+Open-source embedded computer built on the **STM32MP257F** SoC, running
+**OpenSTLinux** (Yocto `scarthgap`) with a Qt 6 / Weston desktop and three
+purpose-built applications.
 
-This repository contains both the **software** (OpenSTLinux build, layers) and
-the **hardware** design files (schematics, routing, clocks).
+This repository holds both halves of the project:
+
+- **Software** — the Yocto/OpenSTLinux build, its layers, and the CubeMX
+  hardware description for the board.
+- **Hardware engineering** — reference schematics, DDR and SDMMC routing
+  data, and the clock/trace calculations behind the display and network
+  interfaces.
+
+---
+
+## Table of contents
+
+1. [Hardware at a glance](#hardware-at-a-glance)
+2. [Repository structure](#repository-structure)
+3. [How the software stack fits together](#how-the-software-stack-fits-together)
+4. [Prerequisites](#prerequisites)
+5. [Building the image](#building-the-image)
+6. [Creating your own machine](#creating-your-own-machine)
+7. [Images](#images)
+8. [Applications](#applications)
+9. [Hardware reference material](#hardware-reference-material)
+10. [Troubleshooting](#troubleshooting)
+
+---
+
+## Hardware at a glance
+
+| Block | Part | Notes |
+| --- | --- | --- |
+| SoC | STM32MP257F | Dual Cortex-A35 + Cortex-M33, VPU, GPU |
+| DDR | LPDDR4 | See `routing/` for the length-equality tables |
+| Ethernet | RTL8211F | RGMII, Gigabit |
+| Display | DSI bridge ADV7535 | Panel timing derived in `compute/dsi_clock.m` |
+| USB | USB 2.0 Type-C | 1A / 1B differ in USB-C vs PCIe-Mini |
+| Storage | SD card | `BOOTDEVICE_LABELS += "sdcard"` |
+
+Two board variants are supported:
+
+| Machine | Distinguishing feature |
+| --- | --- |
+| `watermelon-wine-1a` | PCIe-Mini |
+| `watermelon-wine-1b` | USB-C 3.0 |
+
+> **Note on `schematics/`.** This directory holds **third-party reference
+> schematics** — ST's STM32MP257D/EV1, NXP's MCIMX8M, Nvidia, and TI AM69
+> boards — kept as design references. The Watermelon Wine schematics are not
+> in this repository.
+
+---
 
 ## Repository structure
 
-| Path | Contents |
-| --- | --- |
-| `watermelon-wine-os` | Software: OpenSTLinux build + meta-layers |
-| `schematics` | Board schematics (PDF) |
-| `routing` | Signal routing / impedance guidelines, LPDDR4 length tables |
-| `datasheets` | Component datasheets |
-| `manuals` | ST application notes (DSI, DDR routing, security) |
-| `compute` | Clock / timing calculation scripts |
-| `LICENSE` | Project license |
+```text
+.
+├── README.md
+├── LICENSE
+├── watermelon-wine-os/        # everything software
+│   ├── layers/                # Yocto metadata layers
+│   └── .repo/                 # repo checkout state (generated)
+├── schematics/                # third-party reference board schematics
+├── routing/                   # impedance + LPDDR4/SDMMC trace-length data
+├── datasheets/                # part datasheets (SoC, PHY, USB-C)
+├── manuals/                   # ST application notes
+└── compute/                   # clock & trace-length calculation scripts
+```
 
-## Boards
+### `watermelon-wine-os/layers/`
 
-| Machine | Description |
-| --- | --- |
-| `watermelon-wine-1a` | Watermelon Wine 1A board that contains PCIe-Mini |
-| `watermelon-wine-1b` | Watermelon Wine 1B board that contains USBC 3.0  |
+| Layer | Origin | Role |
+| --- | --- | --- |
+| `openembedded-core` | `repo` (ST manifest) | Yocto core / `bitbake` |
+| `meta-openembedded` | `repo` | OE layers (`meta-oe`, `meta-python`, …) |
+| `meta-st/meta-st-openstlinux` | `repo` | OpenSTLinux distro, images, packages |
+| `meta-st/meta-st-stm32mp` | `repo` | STM32MP2 BSP support, base machines |
+| `meta-st/meta-st-stm32mp-addons` | `repo` | CubeMX machine template, `mx/` machinery |
+| `meta-st/scripts` | `repo` | `envsetup.sh` |
+| **`meta-watermelon-wine`** | **this repo** | Board machines, device trees, CubeMX projects |
+| **`meta-embedded-apps`** | **this repo** (submodule) | `opennow`, `nanobrowser`, `ytgst` recipes |
+| `meta-clang` | submodule | LLVM/Clang toolchain |
+| `meta-qt6` | submodule | Qt 6 (scarthgap LTS) |
+| `meta-rust-bin` | submodule | Prebuilt Rust host tools |
+
+`meta-watermelon-wine` is a plain directory in this repository, not a
+submodule. The other four are git submodules declared in `.gitmodules` —
+initialise them after cloning:
+
+```bash
+git submodule update --init
+```
+
+---
+
+## How the software stack fits together
+
+Worth understanding before building, because it explains most of the
+configuration steps:
+
+1. **`repo` fetches the distribution.** OpenSTLinux is not a single Git
+   repository. `repo init` + `repo sync` checks out ~7 coordinated
+   repositories (OE core, ST BSP, scripts) pinned to one consistent
+   manifest revision. Skipping `repo` leaves you with an unbuildable tree.
+
+2. **A CubeMX project is the hardware description.** For every firmware —
+   kernel, U-Boot, TF-A, OP-TEE — the board's device trees are generated by
+   STM32CubeMX and stored under
+   `layers/meta-watermelon-wine/mx/<project>/CA35/DeviceTree/<project>/`.
+   Because the same project feeds all four firmwares, their view of memory
+   and reserved regions stays consistent.
+
+3. **A machine config ties the two together.** `conf/machine/<board>.conf`
+   names the board and points at its CubeMX project. It is the only file
+   that connects your hardware to the build.
+
+4. **The layer is added explicitly.** `bitbake-layers add-layer` appends
+   `meta-watermelon-wine` to `BBLAYERS` in the build directory.
+
+---
 
 ## Prerequisites
 
-- 64-bit Linux host with at least ~8 GB of RAM and enough disk space for an
-  OpenSTLinux build (**50–100 GB**).
-- **Network access** during the build (sources from GitHub/ST; Cargo crates
-  from crates.io for the Rust application).
-- `repo` tool installed on the host.
+| Requirement | Notes |
+| --- | --- |
+| 64-bit Linux host | Physical or VM |
+| RAM | 8 GB minimum; 16 GB comfortable |
+| Disk | **50–100 GB** for a full build |
+| Network | Required throughout — GitHub, ST, and crates.io |
+| `repo` tool | `apt install repo`, or from `https://gerrit.googlesource.com/git-repo` |
+| `gawk`, `diffstat`, `texinfo` | BitBake host requirements |
+| STM32CubeMX | Only if you change the hardware description |
 
-## Getting started
+Check the host dependencies before starting:
 
-### 1. Clone the repository
+```bash
+gawk --version | head -1
+diffstat -h 2>&1 | head -1
+```
+
+---
+
+## Building the image
+
+### 1. Clone this repository
 
 ```bash
 git clone <this-repo-url>
-cd watermelon-wine-os
+cd Watermelon-Wine-1A
+git submodule update --init
 ```
 
-### 2. Download the OpenSTLinux distribution
+### 2. Fetch the OpenSTLinux distribution
 
 ```bash
+cd watermelon-wine-os
+
 repo init -u https://github.com/STMicroelectronics/oe-manifest.git \
           -b refs/tags/openstlinux-6.6-yocto-scarthgap-mpu-v26.02.18
 repo sync
 ```
 
-### 3. Create the build environment
+`repo sync` downloads several gigabytes. Expect it to take a while on first
+run; it is resumable.
+
+### 3. Add the board layers
+
+The ST manifest does not know about this board's layer:
 
 ```bash
-DISTRO=openstlinux-weston MACHINE=stm32mp25-mx source layers/meta-st/scripts/envsetup.sh
-cd build-openstlinuxweston-stm32mp25-mx
-```
+DISTRO=openstlinux-weston MACHINE=stm32mp25-mx \
+  source layers/meta-st/scripts/envsetup.sh
 
-This creates the `build-openstlinuxweston-stm32mp25-mx` folder.
-
-### 4. Add the Watermelon-Wine layer
-
-```bash
 bitbake-layers add-layer ../layers/meta-watermelon-wine
+bitbake-layers add-layer ../layers/meta-embedded-apps
 bitbake-layers show-layers
 ```
 
-The output should contain a line similar to:
+`envsetup.sh` creates a build directory named
+`build-openstlinuxweston-<machine>`. Confirm both project layers appear in
+`show-layers` before continuing.
 
-```
-watermelon-wine   /home/mint/Documents/Github/Watermelon-Wine-1A/watermelon-wine-os/layers/meta-watermelon-wine  8
-```
+> **Gotcha:** the directory name is fixed when `envsetup.sh` runs and does
+> **not** follow later changes to `MACHINE`. Using `MACHINE=stm32mp25-mx`
+> above yields `build-openstlinuxweston-stm32mp25-mx`, and that name stays
+> even after you set `MACHINE = "watermelon-wine-1a"`. The directory name is
+> only a label — `MACHINE` in `local.conf` is what selects the board. If you
+> prefer a matching name, run `envsetup.sh` with the real machine from the
+> start and skip the `MACHINE` edit.
 
-### 5. Configure the build
-
-Open the build configuration:
+### 4. Configure the build
 
 ```bash
+cd build-openstlinuxweston-*
 nano conf/local.conf
 ```
 
-Set the target board and parallelism. `4` threads is recommended for 8 GB of
-RAM; use `6` or `8` on a faster host.
+**Select the machine:**
 
 ```bash
-MACHINE = "watermelon-wine-1a"        # or "watermelon-wine-1b"
+MACHINE = "watermelon-wine-1a"    # or "watermelon-wine-1b"
+```
+
+**Set the EULA acceptance.** Without this the build fails with an Op-TEE
+panic, and GPU/OpenCL/Vulkan support is silently dropped:
+
+```bash
+ACCEPT_EULA_watermelon-wine-1a = "1"
+```
+
+The variable name is keyed on the exact `MACHINE` string, character for
+character. A mismatch does not fail loudly — it just produces an image
+without hardware acceleration.
+
+**Install the applications** (optional but usually wanted):
+
+```bash
+IMAGE_INSTALL:append = " opennow nanobrowser ytgst"
+```
+
+**Set parallelism.** Default to a conservative value and raise it only if the
+build stays within RAM:
+
+```bash
 BB_NUMBER_THREADS = "4"
 PARALLEL_MAKE = "-j4"
 ```
 
-Then **set the EULA acceptance** for your machine — otherwise the build fails
-with Op-TEE panic errors. Replace the existing `ACCEPT_EULA_stm32mp25-mx`
-line:
-
-```bash
-# =========================================================================
-# Set EULA acceptance
-# =========================================================================
-ACCEPT_EULA_watermelon-wine-1a = "1"
-```
-
-### 6. Build an image
+### 5. Build
 
 ```bash
 bitbake st-image-weston
 ```
 
+A first full build takes hours. Subsequent builds are incremental — BitBake
+reuses `sstate-cache` and only rebuilds what changed.
+
+### 6. Deploy
+
+Copy the boot artefacts to the SD card, then flash the bootloader and
+rootfs partitions with STM32CubeProgrammer, following ST's
+[OpenSTLinux flashing procedure](https://wiki.st.com/stm32mpu/wiki/How_to_flash_the_bootloader_and_the_rootfs).
+
+---
+
+## Creating your own machine
+
+This follows ST's
+[How to create your own machine](https://wiki.st.com/stm32mpu/wiki/How_to_create_your_own_machine),
+adapted to this repository's layout.
+
+A *machine* is a Yocto config file naming a board and pointing at a
+STM32CubeMX-generated project. The CubeMX project holds the device trees for
+each firmware component, so one hardware description drives all of them.
+
+### What a machine touches
+
+| Path | Purpose |
+| --- | --- |
+| `layers/meta-watermelon-wine/conf/machine/<machine>.conf` | Machine definition |
+| `layers/meta-watermelon-wine/mx/<project>/` | CubeMX-generated device trees |
+
+### 1. Generate the device trees
+
+Open your board's `.ioc` in STM32CubeMX and configure DDR, clocks,
+peripherals and pinout. **DDR settings are the critical part** — they are
+baked into the generated trees and a wrong value yields a board that hangs
+before the kernel starts.
+
+Enable device tree generation for every firmware you need, then save into
+the layer, preserving CubeMX's layout:
+
+```text
+layers/meta-watermelon-wine/mx/<project>/CA35/DeviceTree/<project>/
+├── kernel/     stm32mp257f-<project>-mx.dts
+├── u-boot/     stm32mp257f-<project>-mx.dts
+├── tf-a/       stm32mp257f-<project>-mx.dts
+└── optee-os/   stm32mp257f-<project>-mx.dts
+```
+
+Each component directory also receives a `Makefile` and a `-resmem.dtsi`.
+Keep them — the build references them.
+
+### 2. Create the machine config
+
+```bash
+cd layers/meta-watermelon-wine/conf/machine
+cp watermelon-wine-1a.conf my-board.conf
+```
+
+Then edit the *User machine customization* section at the bottom:
+
+```conf
+#@TYPE: Machine
+#@NAME: my-board
+#@DESCRIPTION: My custom board
+
+include conf/machine/stm32mp25-mx.conf
+
+# inherit the same overrides the CubeMX machine uses
+MACHINEOVERRIDES =. "stm32mp25-mx:"
+
+# boot scheme: trusted (default) or optee
+BOOTSCHEME_LABELS += "optee"
+
+# boot device: sdcard, emmc, nand-*, nor-*
+BOOTDEVICE_LABELS += "sdcard"
+
+# CubeMX project
+CUBEMX_PROJECT = "mx/my-board"
+CUBEMX_PROJECT_NAME = "my-board"
+CUBEMX_DTB = "stm32mp257f-${CUBEMX_PROJECT_NAME}-mx"
+
+# M33 co-processor with TrustZone
+CUBEMX_M33_TZ = "0"
+```
+
+| Variable | Meaning |
+| --- | --- |
+| `CUBEMX_DTB` | Device tree name **without** `.dts` |
+| `CUBEMX_PROJECT` | Path within the layer, starting at `mx/` |
+| `CUBEMX_PROJECT_NAME` | Project folder name |
+
+Getting `CUBEMX_DTB` and `CUBEMX_PROJECT` wrong is the most common cause of
+a build that cannot find the device tree.
+
+### 3. Build for it
+
+```bash
+cd watermelon-wine-os
+DISTRO=openstlinux-weston MACHINE=my-board source layers/meta-st/scripts/envsetup.sh
+cd build-openstlinuxweston-*-my-board
+bitbake-layers add-layer ../layers/meta-watermelon-wine
+```
+
+Then set `MACHINE` and `ACCEPT_EULA_my-board` in `conf/local.conf` as in step
+4 above, and build.
+
+### Pitfalls
+
+- **Keep `-resmem.dtsi` in step across firmwares.** The reserved-memory
+  layout must match in kernel, U-Boot, TF-A and OP-TEE, or secure firmware
+  rejects the handover.
+- **`BOOTDEVICE_LABELS` must match how you actually flash.** An SD-card
+  image built with `emmc` selected produces a U-Boot that waits for a root
+  device that never appears.
+- **`ACCEPT_EULA_` is per machine.** Typos here cost you GPU acceleration
+  without any error message.
+- **`CUBEMX_BOARD_REFERENCE` is optional.** It is only for inheriting device
+  trees from an ST evaluation board; a board with its own CubeMX project does
+  not need it.
+
+---
+
 ## Images
 
 | Image | Description |
 | --- | --- |
-| `st-image-weston` | Full image with Wayland/Weston + applications |
+| `st-image-weston` | Full image: Wayland/Weston, Qt 6, applications |
 | `st-image-core` | Minimal console image |
+
+---
 
 ## Applications
 
-The board images include the Qt applications packaged by the
-`meta-embedded-apps` layer:
+Packaged by `layers/meta-embedded-apps` and added to the image via
+`IMAGE_INSTALL:append`.
 
 | Application | Description |
 | --- | --- |
-| OpenNOW | Cloud-gaming client (Qt 6 + Rust) |
-| NanoBrowser | Minimal QtWebEngine/QML browser |
-| YtGst | YouTube client (GStreamer + yt-dlp, V4L2 hardware decode) |
+| **OpenNOW** | Cloud-gaming client — Qt 6 + Rust, hardware video decode |
+| **NanoBrowser** | Minimal QtWebEngine/QML browser |
+| **YtGst** | YouTube client — GStreamer + yt-dlp, V4L2 decode |
 
 Build them individually with:
 
@@ -131,10 +381,57 @@ Build them individually with:
 bitbake opennow nanobrowser ytgst
 ```
 
+### The decode backend is machine-specific
+
+`opennow` is machine-agnostic. Which hardware pipeline it uses is decided by
+a `.bbappend` in the board layer, so the same recipe works on other SoCs:
+
+| Feature | Meaning |
+| --- | --- |
+| *(none)* | V4L2 stateless M2M, software upload |
+| `linux-vaapi` | VA-API acceleration (x86/Intel) |
+| `linux-ffmpeg` | Use FFmpeg instead of GStreamer |
+
+`linux-ffmpeg-bundled` is rejected on purpose: it cross-compiles a pinned
+FFmpeg fork from source and roughly triples build time.
+
+On STM32MP25, the VDEC is a **stateful** Hantro M2M device, not a stateless
+codec node. The `vaapi` and `libva-v4l2-request` paths do not apply.
+
+---
+
+## Hardware reference material
+
+| Path | Contents |
+| --- | --- |
+| `routing/` | Impedance targets, LPDDR4 length-equalisation spreadsheet, SDMMC1 trace lengths |
+| `compute/` | Clock and trace analysis — `dsi_clock.m`, `eth_clock.m`, `i2s_clock.m` (Octave/MATLAB), `ltdc-clk.py` (Python) |
+| `datasheets/` | STM32MP257F, RTL8211F PHY, USB-C |
+| `manuals/` | ST app notes: DSI host (AN4860), STM32MP2 hardware bring-up (AN5489), DDR routing (AN5724), SESIP-3 security (UM3370) |
+| `schematics/` | Third-party reference schematics (ST, NXP, Nvidia, TI) |
+
+The `compute/` scripts and `routing/` data are maintained in Swedish, with
+comments in the source. `eth_clock.m` covers the STM32MP257 ↔ RTL8211F RGMII
+length and delay budget; `ltdc-clk.py` derives the LTDC pixel-clock ceiling
+from the FLEXGEN range.
+
+---
+
 ## Troubleshooting
 
-| Symptom | Fix |
+| Symptom | Cause and fix |
 | --- | --- |
-| **Build aborts with Op-TEE panic** | `ACCEPT_EULA_<machine>` is missing or wrong in `local.conf` |
-| **Build is very slow / OOM** | Lower `BB_NUMBER_THREADS` / `PARALLEL_MAKE`, e.g. `1` or `2` |
-| **OpenNOW Cargo build fails** | Ensure crates.io is reachable during `do_compile` |
+| **Op-TEE panic during build** | `ACCEPT_EULA_<machine>` missing or misspelled. Must match `MACHINE` exactly. |
+| **No GPU / Vulkan in the image** | Same cause — the EULA gates `openvx`, `opencl` and `vulkan`. |
+| **U-Boot waits for a root device** | `BOOTDEVICE_LABELS` does not match the flash medium. |
+| **Cannot find device tree** | `CUBEMX_DTB` or `CUBEMX_PROJECT` wrong, or the CubeMX files were not committed. |
+| **Board hangs before the kernel** | Usually a DDR configuration error in the CubeMX project. |
+| **Build very slow or OOM** | Lower `BB_NUMBER_THREADS` / `PARALLEL_MAKE` to `1`–`2`. |
+| **Cargo build of opennow fails** | crates.io must be reachable during `do_compile`. |
+| **`repo sync` fails partway** | It is resumable — just run it again. |
+
+---
+
+## License
+
+See [LICENSE](LICENSE).
