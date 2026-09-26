@@ -1,4 +1,4 @@
-# Watermelon-Wine-1A
+# Watermelon Wine
 
 Open-source embedded computer built on the **STM32MP257F** SoC, running
 **OpenSTLinux** (Yocto `scarthgap`) with a Qt 6 / Weston desktop and three
