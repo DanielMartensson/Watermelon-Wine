@@ -176,6 +176,9 @@ DISTRO=openstlinux-weston MACHINE=stm32mp25-mx \
 
 bitbake-layers add-layer ../layers/meta-watermelon-wine
 bitbake-layers add-layer ../layers/meta-embedded-apps
+bitbake-layers add-layer ../layers/meta-rust-bin
+bitbake-layers add-layer ../layers/meta-qt6
+bitbake-layers add-layer ../layers/meta-clang
 bitbake-layers show-layers
 ```
 
@@ -201,14 +204,7 @@ nano conf/local.conf
 **Select the machine:**
 
 ```bash
-MACHINE = "watermelon-wine-1a"    # or "watermelon-wine-1b"
-```
-
-**Set the EULA acceptance.** Without this the build fails with an Op-TEE
-panic, and GPU/OpenCL/Vulkan support is silently dropped:
-
-```bash
-ACCEPT_EULA_watermelon-wine-1a = "1"
+MACHINE = "stm32mp25-watermelon-wine-1a"    # or "stm32mp25-watermelon-wine-1b"
 ```
 
 The variable name is keyed on the exact `MACHINE` string, character for
