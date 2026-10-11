@@ -333,7 +333,24 @@ bitbake-layers add-layer ../layers/meta-watermelon-wine
 ```
 
 Then set `MACHINE` and `ACCEPT_EULA_my-board` in `conf/local.conf` as in step
-4 above, and build.
+4 above. Two more things are required for a custom machine to build:
+
+1. The ST layers name the EULA file after the machine
+   (`EULA_FILE_ST` = `<layer>/conf/eula/${MACHINE}`), so create this symlink
+   before building — without it the `st-image-weston` license check fails:
+
+   ```
+   ln -s ST_EULA_SLA layers/meta-st/meta-st-stm32mp-addons/conf/eula/<machine>
+   ```
+
+2. The nested QtWebEngineCore build OOM-kills `cc1plus` on V8's jumbo objects
+   at default parallelism. Cap it by adding to `conf/local.conf`:
+
+   ```conf
+   WEBENGINE_CORE_JOBS = "-j2"
+   ```
+
+Then build.
 
 ### Pitfalls
 
@@ -343,11 +360,19 @@ Then set `MACHINE` and `ACCEPT_EULA_my-board` in `conf/local.conf` as in step
 - **`BOOTDEVICE_LABELS` must match how you actually flash.** An SD-card
   image built with `emmc` selected produces a U-Boot that waits for a root
   device that never appears.
-- **`ACCEPT_EULA_` is per machine.** Typos here cost you GPU acceleration
-  without any error message.
+- **`ACCEPT_EULA_` is per machine, and the license file is named after it.**
+  Typos cost GPU acceleration with no error message; additionally the file
+  `layers/meta-st/meta-st-stm32mp-addons/conf/eula/<machine>` must exist as a
+  symlink to `ST_EULA_SLA`, else the `st-image-weston` license check fails
+  (see "Creating your own machine").
 - **`CUBEMX_BOARD_REFERENCE` is optional.** It is only for inheriting device
   trees from an ST evaluation board; a board with its own CubeMX project does
   not need it.
+- **The nested QtWebEngineCore build has no job cap.** Its top-level
+  `build.ninja` runs a nested `ninja -C ... QtWebEngineCore` on every CPU,
+  OOM-killing `cc1plus` on V8's jumbo objects on a ~15 GiB box. Set
+  `WEBENGINE_CORE_JOBS = "-j2"` in `conf/local.conf` (applied by a no-op-when-
+  unset knob in a `meta-embedded-apps` bbappend).
 
 ---
 
@@ -423,6 +448,7 @@ from the FLEXGEN range.
 | **Cannot find device tree** | `CUBEMX_DTB` or `CUBEMX_PROJECT` wrong, or the CubeMX files were not committed. |
 | **Board hangs before the kernel** | Usually a DDR configuration error in the CubeMX project. |
 | **Build very slow or OOM** | Lower `BB_NUMBER_THREADS` / `PARALLEL_MAKE` to `1`–`2`. |
+| **OOM in qtwebengine / V8** | Nested WebEngineCore build has no job cap — set `WEBENGINE_CORE_JOBS = "-j2"` in `conf/local.conf`. |
 | **Cargo build of opennow fails** | crates.io must be reachable during `do_compile`. |
 | **`repo sync` fails partway** | It is resumable — just run it again. |
 
