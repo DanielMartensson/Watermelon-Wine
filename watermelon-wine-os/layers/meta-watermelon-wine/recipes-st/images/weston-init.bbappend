@@ -15,11 +15,18 @@
 # installs weston.service to ${systemd_user_unitdir}; this append re-installs
 # it (last wins) with the corrected content.
 #
-FILESEXTRAPATHS:prepend := "${thisdir}/weston-init:"
-SRC_URI:append = " file://weston-user.service"
-
+# NOTE: In this bitbake (2.8.1), a relative file:// SRC_URI entry is resolved
+# against the base recipe's FILEPATH (the oecore wayland dir + variant
+# subdirs), NOT the bbappend location, so "file://weston-user.service" fails
+# with "file could not be found". The variables ${thisdir}/${thisfile} are not
+# defined here, and bbappend ":append" joins values with a space (wrong
+# separator for the colon-separated FILEPATH), so an explicit absolute path
+# is used instead.
+WESTON_USER_SERVICE := "/home/ubuntu/Dokument/Github/Watermelon-Wine/watermelon-wine-os/layers/meta-watermelon-wine/recipes-st/images/weston-init/weston-user.service"
+SRC_URI:append = " file://${WESTON_USER_SERVICE}"
+#
 do_install:append() {
     if ${@bb.utils.contains('DISTRO_FEATURES','systemd','true','false',d)}; then
-        install -D -p -m0644 ${WORKDIR}/weston-user.service ${D}${systemd_user_unitdir}/weston.service
+        install -D -p -m0644 ${WESTON_USER_SERVICE} ${D}${systemd_user_unitdir}/weston.service
     fi
 }
