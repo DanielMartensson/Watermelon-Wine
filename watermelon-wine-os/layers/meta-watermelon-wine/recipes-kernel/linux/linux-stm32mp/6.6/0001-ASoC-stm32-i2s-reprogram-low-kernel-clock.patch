@@ -19,6 +19,8 @@ clock, collapse with it).
 Reject a current kernel clock below 32 * fs so the driver programs a
 usable rate, exactly as it already does when the accuracy check fails.
 
+Upstream-Status: Pending
+
 Signed-off-by: noname <noname@example.com>
 
 --- a/sound/soc/stm/stm32_i2s.c
