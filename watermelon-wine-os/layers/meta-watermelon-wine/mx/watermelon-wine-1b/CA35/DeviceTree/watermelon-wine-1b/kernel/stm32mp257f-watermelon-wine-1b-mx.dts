@@ -719,6 +719,18 @@
 	pinctrl-1 = <&i2s2_sleep_pins_mx>;
 	status = "okay";
 
+	/*
+	 * Keep CK_KER_SPI2 at 6.144 MHz: the ST stm32_i2s driver otherwise has
+	 * to reprogram the secure SCMI flexgen (ck_flexgen_10), which lands on
+	 * 54857 Hz. 54857 * 112 = 6143984 is within 2 ppm of 6.144 MHz, so the
+	 * driver accuracy check accepts it and skips clk_set_rate(); the I2S
+	 * prescaler then clamps to divider 1 and WS ends up at ~1714 Hz (audio
+	 * ~26x too slow, and video collapses with it because GStreamer slaves
+	 * video to the audio clock).
+	 */
+	assigned-clocks = <&rcc CK_KER_SPI2>;
+	assigned-clock-rates = <6144000>;
+
 	/* USER CODE BEGIN i2s2 */
 
 	i2s2_port:port{
