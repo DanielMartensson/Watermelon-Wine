@@ -1,0 +1,44 @@
+From: noname <noname@example.com>
+Date: Sat, 17 Oct 2026 23:59:00 +0200
+Subject: [PATCH] ASoC: stm32: i2s: reprogram an unusably low kernel clock
+
+stm32_i2s_set_parent_rate() trusts the current kernel clock as soon as
+stm32_i2s_rate_accurate() reports it as "accurate".  That helper compares
+the maximum expected kernel clock against the current one with
+DIV_ROUND_CLOSEST(), so any clock that divides into the maximum passes -
+even one that is far too low for the peripheral, which can only divide
+the kernel clock down (MCKDIV >= 1, frame length 16/32 bits).
+
+On the STM32MP257F watermelon-wine-1a the CK_KER_SPI2 flexgen comes up at
+54857 Hz instead of 6.144 MHz.  54857 * 112 = 6143984, within 2 ppm of
+6.144 MHz, so the driver skipped clk_set_rate(); the I2S prescaler then
+clamped to divider 1 and the frame clock became ~1.7 kHz, making all
+audio play about 28x too slow (and the video, which follows the audio
+clock, collapse with it).
+
+Reject a current kernel clock below 32 * fs so the driver programs a
+usable rate, exactly as it already does when the accuracy check fails.
+
+Signed-off-by: noname <noname@example.com>
+
+--- a/sound/soc/stm/stm32_i2s.c
++++ b/sound/soc/stm/stm32_i2s.c
+@@ -424,7 +424,17 @@
+ 	 * return immediately.
+ 	 */
+ 	i2s_curr_rate = clk_get_rate(i2s->i2sclk);
+-	if (stm32_i2s_rate_accurate(i2s, i2s_clk_max_rate, i2s_curr_rate))
++	/*
++	 * The I2S peripheral can only divide the kernel clock down again.
++	 * With MCKDIV >= 1 and a frame length of 16/32 bits the kernel clock
++	 * must be at least 32 * fs, but stm32_i2s_rate_accurate() accepts any
++	 * rate that divides into the maximum rate: a kernel clock of 54857 Hz
++	 * passed for 48 kHz because 54857 * 112 ~= 6.144 MHz.  The prescaler
++	 * then clamped to divider 1 and the frame clock fell to ~1.7 kHz, so
++	 * audio played ~28x too slow instead of the clock being reprogrammed.
++	 */
++	if (i2s_curr_rate >= 32 * rate &&
++	    stm32_i2s_rate_accurate(i2s, i2s_clk_max_rate, i2s_curr_rate))
+ 		return 0;
+ 
+ 	/*
