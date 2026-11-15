@@ -24,3 +24,17 @@ CORE_IMAGE_EXTRA_INSTALL:append = " \
 # ModemManager has no modem on the board. PACKAGE_EXCLUDE drops them from the
 # packed rootfs; nothing in the game stack depends on them.
 PACKAGE_EXCLUDE:append = " netdata modem-manager-modemsinifo "
+
+# libsdl2-mixer ships libSDL2_mixer.so, the SDL audio playback library the games
+# need for their sound effects: the engine's own default snd_sfxdevice is
+# SNDDEVICE_SB (src/i_sound.c:52) and the SDL2_mixer module is what owns
+# SNDDEVICE_SB (src/i_sdlsound.c:1120), the only alternative in that table being
+# the pcsound module, which wants a /dev/dsp the seat does not have. The seat
+# carries no libSDL2_mixer today, so without this line the engine the games run
+# on is linked against a library the rootfs does not have. Its pkgconfig entry
+# is the one layers/meta-watermelon-wine/recipes-graphics/libsdl/
+# libsdl2-mixer_2.0.4.bbappend writes, which is what the engine's own
+# PKG_CHECK_MODULES(SDLMIXER, [SDL2_mixer >= 2.0.2]) probe reads.
+CORE_IMAGE_EXTRA_INSTALL:append = " \
+    libsdl2-mixer \
+"

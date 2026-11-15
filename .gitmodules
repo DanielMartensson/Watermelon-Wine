@@ -14,3 +14,7 @@
 	path = watermelon-wine-os/layers/meta-clang
 	url = https://github.com/kraj/meta-clang.git
 	branch = scarthgap
+[submodule "watermelon-wine-os/layers/meta-good-old-games"]
+	path = watermelon-wine-os/layers/meta-good-old-games
+	url = https://github.com/DanielMartensson/meta-good-old-games.git
+	branch = scarthgap

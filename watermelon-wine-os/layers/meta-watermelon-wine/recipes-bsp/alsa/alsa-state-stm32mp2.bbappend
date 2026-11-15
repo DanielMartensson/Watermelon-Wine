@@ -16,7 +16,18 @@
 # layer would never be found, and dropping one in meta-st would put an OS
 # change in the wrong layer.  No heredoc either: the shell parser here reads
 # the "card STM32MP25DK" style lines of the stanza as unparsed assignments.
+#
+# The rate 48000 lines are the seat's measured audio fact, not a style choice:
+# this board's I2S -> HDMI link only clocks correctly for the 48 kHz family,
+# and any 44.1 kHz-family rate the applications ask for arrives about 2.6x
+# too fast on the DMA, which sounds pitch-shifted, garbled and full of
+# underruns. So the plug has to RESAMPLE: a bare slave.pcm passes the engine's
+# own 11-22 kHz mono or the 44100 of OpenAL and friends straight to hw:0,0 and
+# every one of them garbles; naming rate 48000 format S16_LE channels 2 in the
+# slave makes alsa-lib convert before the DMA and Doom, Heretic, Hexen, the
+# OpenNOW streamer and UT99 all play clean. ut99 even states the fact in its
+# own log: "Can't set OutputRate of 44100, using system (OS) defaults of 48000".
 do_install:append() {
-    printf '%s\n' '' '# Added by meta-watermelon-wine: alsa-lib default PCM, so' '# snd_pcm_open("default") resolves instead of failing -EHOSTDOWN.' '' 'pcm.!default {' '    type plug' '    slave.pcm "playback_hdmi"' '}' '' 'ctl.!default {' '    type hw' '    card STM32MP25DK' '}' >> ${D}${sysconfdir}/asound-stm32mp25yx-dk.conf
-    printf '%s\n' '' '# Added by meta-watermelon-wine: alsa-lib default PCM (EV1 card).' '' 'pcm.!default {' '    type plug' '    slave.pcm "playback_hdmi"' '}' '' 'ctl.!default {' '    type hw' '    card STM32MP25EV1' '}' >> ${D}${sysconfdir}/asound-stm32mp25yx-ev1.conf
+    printf '%s\n' '' '# Added by meta-watermelon-wine: alsa-lib default PCM, so' '# snd_pcm_open("default") resolves instead of failing -EHOSTDOWN.' '' 'pcm.!default {' '    type plug' '    slave {' '        pcm "playback_hdmi"' '        rate 48000' '        format S16_LE' '        channels 2' '    }' '}' '' 'ctl.!default {' '    type hw' '    card STM32MP25DK' '}' >> ${D}${sysconfdir}/asound-stm32mp25yx-dk.conf
+    printf '%s\n' '' '# Added by meta-watermelon-wine: alsa-lib default PCM (EV1 card).' '' 'pcm.!default {' '    type plug' '    slave {' '        pcm "playback_hdmi"' '        rate 48000' '        format S16_LE' '        channels 2' '    }' '}' '' 'ctl.!default {' '    type hw' '    card STM32MP25EV1' '}' >> ${D}${sysconfdir}/asound-stm32mp25yx-ev1.conf
 }
